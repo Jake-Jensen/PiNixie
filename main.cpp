@@ -1,5 +1,8 @@
 #include <wiringPi.h>
 #include <stdint.h>
+#include <iostream>
+#include <chrono>
+#include <ctime> 
 
 /* RPI 3B+ pinout (USB ports facing downward)
 3.3v		5v
@@ -28,50 +31,50 @@ GND			21
 // which uses gpio export for setup for wiringPiSetupSys
 
 struct DriverOne {
-	int A = 17;
-	int B = 27;
-	int C = 22;
-	int D = 18;
+	int A = 4;
+	int B = 14;
+	int C = 15;
+	int D = 17;
 	uint8_t CurrentDigit = 0;
 };
 
 struct DriverTwo {
-	int A = 5;
-	int B = 6;
-	int C = 13;
-	int D = 19;
+	int A = 18;
+	int B = 27;
+	int C = 22;
+	int D = 23;
 	uint8_t CurrentDigit = 0;
 };
 
 struct DriverThree {
-	int A = 12;
-	int B = 16;
-	int C = 20;
-	int D = 21;
+	int A = 24;
+	int B = 10;
+	int C = 9;
+	int D = 11;
 	uint8_t CurrentDigit = 0;
 };
 
 struct DriverFour {
-	int A = 0;
-	int B = 0;
-	int C = 0;
-	int D = 0;
+	int A = 8;
+	int B = 7;
+	int C = 5;
+	int D = 6;
 	uint8_t CurrentDigit = 0;
 };
 
 struct DriverFive {
-	int A = 0;
-	int B = 0;
-	int C = 0;
-	int D = 0;
+	int A = 12;
+	int B = 13;
+	int C = 19;
+	int D = 16;
 	uint8_t CurrentDigit = 0;
 };
 
 struct DriverSix {
-	int A = 0;
-	int B = 0;
-	int C = 0;
-	int D = 0;
+	int A = 2;
+	int B = 3;
+	int C = 20;
+	int D = 21;
 	uint8_t CurrentDigit = 0;
 };
 
@@ -129,11 +132,62 @@ void NixieControl(int WhichDriver, uint8_t value) {
 }
 
 void CycleFromZero() {
-	DriverOne* DriverOne;
-	DriverTwo* DriverTwo;
 	while (true)
 	{
 		CycleAllDigits(1000);
+	}
+}
+
+void CycleFromOffset(unsigned int DelayTime) {
+	DriverOne* DriverOne;
+	DriverTwo* DriverTwo;
+	DriverThree* DriverThree;
+	DriverFour* DriverFour;
+	DriverFive* DriverFive;
+	DriverSix* DriverSix;
+
+	DriverOne->CurrentDigit = 0;
+	DriverTwo->CurrentDigit = 1;
+	DriverThree->CurrentDigit = 2;
+	DriverFour->CurrentDigit = 3;
+	DriverFive->CurrentDigit = 4;
+	DriverSix->CurrentDigit = 5;
+
+	while (true) {
+		if (DriverOne->CurrentDigit > 9) {
+			DriverOne->CurrentDigit = 0;
+		}
+		if (DriverTwo->CurrentDigit > 9) {
+			DriverTwo->CurrentDigit = 0;
+		}
+		if (DriverThree->CurrentDigit > 9) {
+			DriverThree->CurrentDigit = 0;
+		}
+		if (DriverFour->CurrentDigit > 9) {
+			DriverFour->CurrentDigit = 0;
+		}
+		if (DriverFive->CurrentDigit > 9) {
+			DriverFive->CurrentDigit = 0;
+		}
+		if (DriverSix->CurrentDigit > 9) {
+			DriverSix->CurrentDigit = 0;
+		}
+
+		NixieControl(1, DriverOne->CurrentDigit);
+		NixieControl(2, DriverTwo->CurrentDigit);
+		NixieControl(3, DriverThree->CurrentDigit);
+		NixieControl(4, DriverFour->CurrentDigit);
+		NixieControl(5, DriverFive->CurrentDigit);
+		NixieControl(6, DriverSix->CurrentDigit);
+
+		DriverOne->CurrentDigit++;
+		DriverTwo->CurrentDigit++;
+		DriverThree->CurrentDigit++;
+		DriverFour->CurrentDigit++;
+		DriverFive->CurrentDigit++;
+		DriverSix->CurrentDigit++;
+
+		delay(DelayTime);
 	}
 }
 
@@ -150,6 +204,58 @@ void CycleAllDigits(unsigned int DelayTime)
 		NixieControl(5, i);
 		NixieControl(6, i);
 		delay(DelayTime);
+	}
+}
+
+void RTCMode()
+{
+	while (true) {
+
+		auto start = std::chrono::system_clock::now();
+		auto end = std::chrono::system_clock::now();
+		std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+		std::string CurrentTime = std::ctime(&end_time);
+		std::string CopyOfTime = CurrentTime;
+
+		// Remove the year
+		CurrentTime = CurrentTime.substr(0, CurrentTime.length() - 5);
+
+		// Get the last 2 digits - Seconds
+		std::string Seconds = CurrentTime.substr(CurrentTime.length() - 3, CurrentTime.length());
+
+		// Remove the seconds and semicolon
+		CurrentTime = CurrentTime.substr(0, CurrentTime.length() - 3);
+
+		// Get the minutes
+		std::string Minutes = CurrentTime.substr(CurrentTime.length() - 3, CurrentTime.length());
+
+		// Remove the minutes and semicolon
+		CurrentTime = CurrentTime.substr(0, CurrentTime.length() - 3);
+
+		// Get the seconds
+		std::string Hours = CurrentTime.substr(CurrentTime.length() - 3, CurrentTime.length());
+
+		Seconds = Seconds.substr(0, 2);
+		Minutes = Minutes.substr(0, 2);
+		Hours = Hours.substr(0, 2);
+
+		int Hours0 = std::atoi(Hours.substr(0, 1).c_str());
+		int Hours1 = std::atoi(Hours.substr(1, 2).c_str());
+
+		int Minutes0 = std::atoi(Minutes.substr(0, 1).c_str());
+		int Minutes1 = std::atoi(Minutes.substr(1, 2).c_str());
+
+		int Seconds0 = std::atoi(Seconds.substr(0, 1).c_str());
+		int Seconds1 = std::atoi(Seconds.substr(1, 2).c_str());
+
+		NixieControl(1, Hours0);
+		NixieControl(2, Hours1);
+		NixieControl(3, Minutes0);
+		NixieControl(4, Minutes1);
+		NixieControl(5, Seconds0);
+		NixieControl(6, Seconds1);
+		
+		delay(1000);
 	}
 }
 
